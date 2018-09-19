@@ -1,0 +1,39 @@
+{
+  "type" : "object",
+  "properties" : {
+    "host" : {
+      "title": "SMTP host",
+      "type" : "string"
+    },
+    "port" : {
+      "title": "SMTP port",
+      "type" : "integer"
+    },
+    "username" : {
+      "title": "SMTP username",
+      "type" : "string"
+    },
+    "password" : {
+      "title": "SMTP password",
+      "description": "Password",
+      "type" : "string",
+      "widget": "password"
+    },
+    "from" : {
+      "title": "Email from",
+      "type" : "string"
+    },
+    "to" : {
+      "title": "Email to",
+      "type" : "string"
+    },
+    "subject" : {
+      "title": "Email subject",
+      "type" : "string"
+    },
+    "templateName" : {
+      "title": "Email template file name",
+      "type" : "string"
+    }
+  }
+}
