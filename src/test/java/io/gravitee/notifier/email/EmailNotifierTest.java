@@ -64,7 +64,7 @@ public class EmailNotifierTest {
     @Before
     public void init() throws IOException {
         initMocks(this);
-        setField(emailNotifier, "templatesPath", this.getClass().getResource("/templates").getPath());
+        setField(emailNotifier, "templatesPath", this.getClass().getResource("/io/gravitee/notifier/email/templates").getPath());
         emailNotifier.init();
 
         mockStatic(MailClient.class);

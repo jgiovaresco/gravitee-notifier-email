@@ -41,6 +41,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -68,7 +69,7 @@ public class EmailNotifier extends AbstractNotifier {
 
     @PostConstruct
     public void init() throws IOException {
-        config.setTemplateLoader(new FileTemplateLoader(new File(templatesPath)));
+        config.setTemplateLoader(new FileTemplateLoader(new File(URLDecoder.decode(templatesPath, "UTF-8"))));
     }
 
     @Override
