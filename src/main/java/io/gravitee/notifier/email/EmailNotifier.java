@@ -166,6 +166,7 @@ public class EmailNotifier extends AbstractNotifier {
 
         final List<String> resources = imageElements.stream()
                 .filter(imageElement -> imageElement.hasAttr("src"))
+                .filter(imageElement -> !imageElement.attr("src").startsWith("http"))
                 .map(imageElement -> {
                     final String src = imageElement.attr("src");
                     imageElement.attr("src", "cid:" + src);
