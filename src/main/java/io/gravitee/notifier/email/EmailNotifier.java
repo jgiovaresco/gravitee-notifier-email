@@ -32,11 +32,11 @@ import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
 import javax.activation.MimetypesFileTypeMap;
-import javax.annotation.PostConstruct;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
@@ -55,7 +55,7 @@ import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 import static org.springframework.ui.freemarker.FreeMarkerTemplateUtils.processTemplateIntoString;
 
-public class EmailNotifier extends AbstractNotifier {
+public class EmailNotifier extends AbstractNotifier implements InitializingBean {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EmailNotifier.class);
 
@@ -67,8 +67,7 @@ public class EmailNotifier extends AbstractNotifier {
 
     private Configuration config = new Configuration(Configuration.VERSION_2_3_28);
 
-    @PostConstruct
-    public void init() throws IOException {
+    public void afterPropertiesSet() throws IOException {
         config.setTemplateLoader(new FileTemplateLoader(new File(URLDecoder.decode(templatesPath, "UTF-8"))));
     }
 
