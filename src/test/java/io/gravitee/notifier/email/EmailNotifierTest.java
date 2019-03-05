@@ -28,6 +28,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
@@ -44,7 +45,7 @@ import static org.springframework.test.util.ReflectionTestUtils.setField;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({MailClient.class, Vertx.class})
-@Ignore
+@PowerMockIgnore({"com.sun.org.apache.xerces.*", "javax.xml.*", "org.xml.*"})
 public class EmailNotifierTest {
 
     @InjectMocks
@@ -79,7 +80,7 @@ public class EmailNotifierTest {
     public void shouldSend() throws Exception {
         when(notification.getType()).thenReturn("email");
         when(notification.getDestination()).thenReturn("to@mail.com");
-        when(mapper.readValue(anyString(), eq(EmailNotificationConfiguration.class)))
+        when(mapper.readValue(nullable(String.class), eq(EmailNotificationConfiguration.class)))
                 .thenReturn(emailNotificationConfiguration);
         when(emailNotificationConfiguration.getFrom()).thenReturn("from@mail.com");
         when(emailNotificationConfiguration.getSubject()).thenReturn("subject of email");
