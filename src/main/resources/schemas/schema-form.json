@@ -2,38 +2,66 @@
   "type" : "object",
   "properties" : {
     "host" : {
-      "title": "SMTP host",
+      "title": "Host",
+      "description": "SMTP Host",
       "type" : "string"
     },
     "port" : {
-      "title": "SMTP port",
+      "title": "Port",
+      "description": "SMTP Port",
       "type" : "integer"
     },
     "username" : {
-      "title": "SMTP username",
+      "title": "Username",
+      "description": "SMTP Username",
       "type" : "string"
     },
     "password" : {
-      "title": "SMTP password",
-      "description": "Password",
+      "title": "Password",
+      "description": "SMTP Password",
       "type" : "string",
       "widget": "password"
     },
     "from" : {
-      "title": "Email from",
+      "title": "From",
+      "description": "Email address used as 'from' when sending email",
       "type" : "string"
     },
     "to" : {
-      "title": "Email to",
+      "title": "Recipients",
+      "description": "The recipients of the email",
       "type" : "string"
     },
     "subject" : {
-      "title": "Email subject",
+      "title": "Subject",
+      "description": "The subject of the email",
       "type" : "string"
     },
-    "templateName" : {
-      "title": "Email template file name",
-      "type" : "string"
+    "body" : {
+      "title": "Body",
+      "description": "The email payload",
+      "type" : "string",
+      "x-schema-form": {
+        "type": "codemirror",
+        "codemirrorOptions": {
+          "placeholder": "Put the content of the email here...",
+          "lineWrapping": true,
+          "lineNumbers": true,
+          "allowDropFileTypes": true,
+          "autoCloseTags": true,
+          "mode": {
+            "name": "html"
+          }
+        }
+      }
     }
-  }
+  },
+  "required": [
+    "host",
+    "port",
+    "from",
+    "to",
+    "subject",
+    "body"
+  ]
 }

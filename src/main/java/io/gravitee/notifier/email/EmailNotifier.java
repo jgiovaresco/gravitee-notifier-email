@@ -15,13 +15,12 @@
  */
 package io.gravitee.notifier.email;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import freemarker.cache.FileTemplateLoader;
+import freemarker.core.TemplateClassResolver;
 import freemarker.template.Configuration;
-import freemarker.template.Template;
-import io.gravitee.notifier.api.AbstractNotifier;
+import io.gravitee.notifier.api.AbstractConfigurableNotifier;
 import io.gravitee.notifier.api.Notification;
-import io.gravitee.notifier.email.configuration.EmailNotificationConfiguration;
+import io.gravitee.notifier.email.configuration.EmailNotifierConfiguration;
 import io.vertx.core.Vertx;
 import io.vertx.ext.mail.MailAttachment;
 import io.vertx.ext.mail.MailConfig;
@@ -33,16 +32,14 @@ import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
 import javax.activation.MimetypesFileTypeMap;
 import java.io.File;
 import java.io.IOException;
-import java.io.StringReader;
-import java.io.StringWriter;
 import java.net.URLDecoder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -51,66 +48,58 @@ import static io.vertx.core.buffer.Buffer.buffer;
 import static io.vertx.ext.mail.MailClient.createShared;
 import static java.lang.String.valueOf;
 import static java.nio.file.Files.readAllBytes;
-import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
-import static org.springframework.ui.freemarker.FreeMarkerTemplateUtils.processTemplateIntoString;
 
-public class EmailNotifier extends AbstractNotifier implements InitializingBean {
+/**
+ * @author David BRASSELY (david.brassely at graviteesource.com)
+ * @author Azize ELAMRANI (azize.elamrani at graviteesource.com)
+ * @author GraviteeSource Team
+ */
+public class EmailNotifier extends AbstractConfigurableNotifier<EmailNotifierConfiguration> implements InitializingBean {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EmailNotifier.class);
+
+    private static final String TYPE = "email-notifier";
 
     @Value("${notifiers.email.templates.path:${gravitee.home}/templates}")
     private String templatesPath;
 
-    @Autowired
-    private ObjectMapper mapper;
-
     private Configuration config = new Configuration(Configuration.VERSION_2_3_28);
 
-    public void afterPropertiesSet() throws IOException {
-        config.setTemplateLoader(new FileTemplateLoader(new File(URLDecoder.decode(templatesPath, "UTF-8"))));
+    public EmailNotifier(EmailNotifierConfiguration configuration) {
+        super(TYPE, configuration);
     }
 
-    @Override
-    protected String getType() {
-        return "email";
+    public void afterPropertiesSet() throws IOException {
+        config.setNewBuiltinClassResolver(TemplateClassResolver.SAFER_RESOLVER);
+        config.setTemplateLoader(new FileTemplateLoader(new File(URLDecoder.decode(templatesPath, "UTF-8"))));
     }
 
     @Override
     public CompletableFuture<Void> doSend(final Notification notification, final Map<String, Object> parameters) {
         final CompletableFuture<Void> completeFuture = new CompletableFuture<>();
         try {
-            final EmailNotificationConfiguration emailNotificationConfiguration =
-                    mapper.readValue(notification.getConfiguration(), EmailNotificationConfiguration.class);
-
             final MailMessage mailMessage = new MailMessage()
-                    .setFrom(emailNotificationConfiguration.getFrom())
-                    .setTo(asList(notification.getDestination().split(",|;|\\s")));
+                    .setFrom(configuration.getFrom())
+                    .setTo(Arrays.asList(configuration.getTo().split(",|;|\\s")));
 
-            final StringWriter result = new StringWriter();
-            final Template t = new Template("subject", new StringReader(getSubject(emailNotificationConfiguration,
-                    parameters)), config);
-            t.process(parameters, result);
-            mailMessage.setSubject(result.toString());
-
-            final Template template = config.getTemplate(getTemplateName(emailNotificationConfiguration, parameters));
-            final String html = processTemplateIntoString(template, parameters);
-            addContentInMessage(mailMessage, html);
+            mailMessage.setSubject(templatize(configuration.getSubject(), parameters));
+            addContentInMessage(mailMessage, templatize(configuration.getBody(), parameters));
 
             final MailConfig mailConfig = new MailConfig()
-                    .setHostname(emailNotificationConfiguration.getHost())
-                    .setPort(emailNotificationConfiguration.getPort())
-                    .setUsername(emailNotificationConfiguration.getUsername())
-                    .setPassword(emailNotificationConfiguration.getPassword())
-                    .setTrustAll(emailNotificationConfiguration.isSslTrustAll());
+                    .setHostname(configuration.getHost())
+                    .setPort(configuration.getPort())
+                    .setUsername(configuration.getUsername())
+                    .setPassword(configuration.getPassword())
+                    .setTrustAll(configuration.isSslTrustAll());
 
-            if (emailNotificationConfiguration.getSslKeyStore() != null) {
-                mailConfig.setKeyStore(emailNotificationConfiguration.getSslKeyStore());
+            if (configuration.getSslKeyStore() != null) {
+                mailConfig.setKeyStore(configuration.getSslKeyStore());
             }
-            if (emailNotificationConfiguration.getSslKeyStorePassword() != null) {
-                mailConfig.setKeyStorePassword(emailNotificationConfiguration.getSslKeyStorePassword());
+            if (configuration.getSslKeyStorePassword() != null) {
+                mailConfig.setKeyStorePassword(configuration.getSslKeyStorePassword());
             }
-            if (emailNotificationConfiguration.isStartTLSEnabled()) {
+            if (configuration.isStartTLSEnabled()) {
                 mailConfig.setStarttls(StartTLSOptions.REQUIRED);
             }
 
@@ -129,34 +118,6 @@ public class EmailNotifier extends AbstractNotifier implements InitializingBean 
             completeFuture.completeExceptionally(ex);
         }
         return completeFuture;
-    }
-
-    private String getSubject(final EmailNotificationConfiguration emailNotificationConfiguration,
-                              final Map<String, Object> parameters) {
-        String subject = "";
-        if (emailNotificationConfiguration.getSubject() == null) {
-            final Object emailDefaultSubject = parameters.get("_email_default_subject");
-            if (emailDefaultSubject != null) {
-                subject = emailDefaultSubject.toString();
-            }
-        } else {
-            subject = emailNotificationConfiguration.getSubject();
-        }
-        return subject;
-    }
-
-    private String getTemplateName(final EmailNotificationConfiguration emailNotificationConfiguration,
-                                   final Map<String, Object> parameters) {
-        String templateName = "";
-        if (emailNotificationConfiguration.getTemplateName() == null) {
-            final Object emailDefaultTemplateName = parameters.get("_email_default_template_name");
-            if (emailDefaultTemplateName != null) {
-                templateName = emailDefaultTemplateName.toString();
-            }
-        } else {
-            templateName = emailNotificationConfiguration.getTemplateName();
-        }
-        return templateName;
     }
 
     private void addContentInMessage(final MailMessage mailMessage, final String htmlText) throws Exception {

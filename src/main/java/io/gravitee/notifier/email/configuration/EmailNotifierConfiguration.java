@@ -15,17 +15,16 @@
  */
 package io.gravitee.notifier.email.configuration;
 
-import io.gravitee.notifier.api.NotificationConfiguration;
+import io.gravitee.notifier.api.NotifierConfiguration;
 
 import java.io.Serializable;
 
 /**
+ * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author Azize ELAMRANI (azize.elamrani at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class EmailNotificationConfiguration implements NotificationConfiguration, Serializable {
-
-    private static final long serialVersionUID = 5529415811922473670L;
+public class EmailNotifierConfiguration implements NotifierConfiguration, Serializable {
 
     private String host;
     private int port;
@@ -33,8 +32,9 @@ public class EmailNotificationConfiguration implements NotificationConfiguration
     private String password;
 
     private String from;
+    private String to;
     private String subject;
-    private String templateName;
+    private String body;
 
     private boolean startTLSEnabled;
     private boolean sslTrustAll;
@@ -81,6 +81,14 @@ public class EmailNotificationConfiguration implements NotificationConfiguration
         this.from = from;
     }
 
+    public String getTo() {
+        return to;
+    }
+
+    public void setTo(String to) {
+        this.to = to;
+    }
+
     public String getSubject() {
         return subject;
     }
@@ -89,12 +97,8 @@ public class EmailNotificationConfiguration implements NotificationConfiguration
         this.subject = subject;
     }
 
-    public String getTemplateName() {
-        return templateName;
-    }
-
-    public void setTemplateName(String templateName) {
-        this.templateName = templateName;
+    public String getBody() {
+        return body;
     }
 
     public boolean isStartTLSEnabled() {
