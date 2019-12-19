@@ -29,7 +29,7 @@
 
     <groupId>io.gravitee.notifier</groupId>
     <artifactId>gravitee-notifier-email</artifactId>
-    <version>1.3.0-SNAPSHOT</version>
+    <version>1.2.1-SNAPSHOT</version>
 
     <name>Gravitee.io APIM - Notifier - Email</name>
 
@@ -57,6 +57,7 @@
             <groupId>io.vertx</groupId>
             <artifactId>vertx-core</artifactId>
             <version>${vertx.version}</version>
+	    <scope>provided</scope>
         </dependency>
 
         <dependency>
