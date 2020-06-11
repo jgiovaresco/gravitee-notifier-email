@@ -80,7 +80,7 @@ public class EmailNotifier extends AbstractConfigurableNotifier<EmailNotifierCon
         final CompletableFuture<Void> completeFuture = new CompletableFuture<>();
         try {
             final MailMessage mailMessage = new MailMessage()
-                    .setFrom(configuration.getFrom())
+                    .setFrom(templatize(configuration.getFrom(), parameters))
                     .setTo(Arrays.asList(configuration.getTo().split(",|;|\\s")));
 
             mailMessage.setSubject(templatize(configuration.getSubject(), parameters));
