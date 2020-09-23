@@ -18,6 +18,7 @@ package io.gravitee.notifier.email;
 import freemarker.cache.FileTemplateLoader;
 import freemarker.core.TemplateClassResolver;
 import freemarker.template.Configuration;
+import freemarker.template.TemplateException;
 import io.gravitee.notifier.api.AbstractConfigurableNotifier;
 import io.gravitee.notifier.api.Notification;
 import io.gravitee.notifier.email.configuration.EmailNotifierConfiguration;
@@ -81,7 +82,14 @@ public class EmailNotifier extends AbstractConfigurableNotifier<EmailNotifierCon
         try {
             final MailMessage mailMessage = new MailMessage()
                     .setFrom(templatize(configuration.getFrom(), parameters))
-                    .setTo(Arrays.asList(configuration.getTo().split(",|;|\\s")));
+                    .setTo(Arrays.stream(configuration.getTo().split(",|;|\\s")).map(to -> {
+                        try {
+                            return templatize(to, parameters);
+                        } catch (Exception ex) {
+                            completeFuture.completeExceptionally(ex);
+                            throw new IllegalArgumentException("Error while sending email notification", ex);
+                        }
+                    }).collect(toList()));
 
             mailMessage.setSubject(templatize(configuration.getSubject(), parameters));
             addContentInMessage(mailMessage, templatize(configuration.getBody(), parameters));
