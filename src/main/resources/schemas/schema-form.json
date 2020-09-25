@@ -54,6 +54,26 @@
           }
         }
       }
+    },
+    "startTLSEnabled" : {
+      "title": "Start TLS enabled",
+      "description": "SMTP server TLS activation",
+      "type" : "boolean"
+    },
+    "sslTrustAll" : {
+      "title": "SSL trust all",
+      "description": "Email address used as 'from' when sending email",
+      "type" : "boolean"
+    },
+    "sslKeyStore" : {
+      "title": "SSL key store",
+      "description": "Keystore path for SMTP exposition through SMTPS protocol",
+      "type" : "string"
+    },
+    "sslKeyStorePassword" : {
+      "title": "SSL key store password",
+      "description": "Keystore password for SMTP exposition through SMTPS protocol",
+      "type" : "string"
     }
   },
   "required": [
