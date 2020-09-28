@@ -18,7 +18,6 @@ package io.gravitee.notifier.email;
 import freemarker.cache.FileTemplateLoader;
 import freemarker.core.TemplateClassResolver;
 import freemarker.template.Configuration;
-import freemarker.template.TemplateException;
 import io.gravitee.notifier.api.AbstractConfigurableNotifier;
 import io.gravitee.notifier.api.Notification;
 import io.gravitee.notifier.email.configuration.EmailNotifierConfiguration;
@@ -109,6 +108,8 @@ public class EmailNotifier extends AbstractConfigurableNotifier<EmailNotifierCon
             }
             if (configuration.isStartTLSEnabled()) {
                 mailConfig.setStarttls(StartTLSOptions.REQUIRED);
+            } else {
+                mailConfig.setStarttls(StartTLSOptions.DISABLED);
             }
 
             createShared(Vertx.currentContext().owner(), mailConfig, valueOf(mailConfig.hashCode()))
