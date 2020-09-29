@@ -22,10 +22,7 @@ import io.gravitee.notifier.api.AbstractConfigurableNotifier;
 import io.gravitee.notifier.api.Notification;
 import io.gravitee.notifier.email.configuration.EmailNotifierConfiguration;
 import io.vertx.core.Vertx;
-import io.vertx.ext.mail.MailAttachment;
-import io.vertx.ext.mail.MailConfig;
-import io.vertx.ext.mail.MailMessage;
-import io.vertx.ext.mail.StartTLSOptions;
+import io.vertx.ext.mail.*;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
@@ -96,9 +93,15 @@ public class EmailNotifier extends AbstractConfigurableNotifier<EmailNotifierCon
             final MailConfig mailConfig = new MailConfig()
                     .setHostname(configuration.getHost())
                     .setPort(configuration.getPort())
-                    .setUsername(configuration.getUsername())
-                    .setPassword(configuration.getPassword())
                     .setTrustAll(configuration.isSslTrustAll());
+
+            if (configuration.getUsername() != null && ! configuration.getUsername().isEmpty() &&
+                    configuration.getPassword() != null && ! configuration.getPassword().isEmpty()) {
+                mailConfig.setUsername(configuration.getUsername());
+                mailConfig.setPassword(configuration.getPassword());
+            } else {
+                mailConfig.setLogin(LoginOption.DISABLED);
+            }
 
             if (configuration.getSslKeyStore() != null) {
                 mailConfig.setKeyStore(configuration.getSslKeyStore());
