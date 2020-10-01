@@ -18,6 +18,7 @@ package io.gravitee.notifier.email;
 import freemarker.cache.FileTemplateLoader;
 import freemarker.core.TemplateClassResolver;
 import freemarker.template.Configuration;
+import io.gravitee.common.utils.UUID;
 import io.gravitee.notifier.api.AbstractConfigurableNotifier;
 import io.gravitee.notifier.api.Notification;
 import io.gravitee.notifier.email.configuration.EmailNotifierConfiguration;
@@ -25,6 +26,7 @@ import io.vertx.core.Vertx;
 import io.vertx.ext.mail.*;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,11 +37,11 @@ import javax.activation.MimetypesFileTypeMap;
 import java.io.File;
 import java.io.IOException;
 import java.net.URLDecoder;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static io.vertx.core.buffer.Buffer.buffer;
 import static io.vertx.ext.mail.MailClient.createShared;
@@ -136,27 +138,38 @@ public class EmailNotifier extends AbstractConfigurableNotifier<EmailNotifierCon
         final Document document = Jsoup.parse(htmlText);
         final Elements imageElements = document.getElementsByTag("img");
 
-        final List<String> resources = imageElements.stream()
-                .filter(imageElement -> imageElement.hasAttr("src"))
-                .filter(imageElement -> !imageElement.attr("src").startsWith("http"))
-                .map(imageElement -> {
-                    final String src = imageElement.attr("src");
-                    imageElement.attr("src", "cid:" + src);
-                    return src;
-                }).collect(toList());
-
-        mailMessage.setHtml(document.html());
+        final List<Element> resources = imageElements.stream()
+                .filter(imageElement -> imageElement.hasAttr("src") && !imageElement.attr("src").startsWith("http"))
+                .collect(toList());
 
         if (!resources.isEmpty()) {
             final List<MailAttachment> mailAttachments = new ArrayList<>(resources.size());
-            for (final String res : resources) {
+            for (final Element res : resources) {
                 final MailAttachment attachment = new MailAttachment();
-                attachment.setContentType(getContentTypeByFileName(res));
-                attachment.setData(buffer(readAllBytes(new File(templatesPath, res).toPath())));
+
+                String source = res.attr("src");
+                if (source.startsWith("data:image/")) {
+                    final String value = source.replaceFirst("^data:image/[^;]*;base64,?", "");
+                    byte[] bytes = Base64.getDecoder().decode(value.getBytes(StandardCharsets.UTF_8));
+                    attachment.setContentType(extractMimeType(source));
+                    attachment.setData(buffer(bytes));
+                } else {
+                    attachment.setContentType(getContentTypeByFileName(source));
+                    attachment.setData(buffer(readAllBytes(new File(templatesPath, source).toPath())));
+                }
+
+                String contentId = UUID.random().toString();
+                res.attr("src", "cid:" + contentId);
+                attachment.setContentId('<' + contentId + '>');
                 attachment.setDisposition("inline");
-                attachment.setContentId("<" + res + ">");
+
                 mailAttachments.add(attachment);
             }
+
+            // Set HTML content
+            mailMessage.setHtml(document.html());
+
+            // Attach images
             mailMessage.setInlineAttachment(mailAttachments);
         }
     }
@@ -168,5 +181,18 @@ public class EmailNotifier extends AbstractConfigurableNotifier<EmailNotifierCon
             return "image/png";
         }
         return MimetypesFileTypeMap.getDefaultFileTypeMap().getContentType(fileName);
+    }
+
+    /**
+     * Extract the MIME type from a base64 string
+     * @param encoded Base64 string
+     * @return MIME type string
+     */
+    private static String extractMimeType(final String encoded) {
+        final Pattern mime = Pattern.compile("^data:([a-zA-Z0-9]+/[a-zA-Z0-9]+).*,.*");
+        final Matcher matcher = mime.matcher(encoded);
+        if (!matcher.find())
+            return "";
+        return matcher.group(1).toLowerCase();
     }
 }
