@@ -147,7 +147,7 @@ public class EmailNotifier extends AbstractConfigurableNotifier<EmailNotifierCon
             for (final Element res : resources) {
                 final MailAttachment attachment = new MailAttachment();
 
-                String source = res.attr("src");
+                String source = res.attr("src").trim();
                 if (source.startsWith("data:image/")) {
                     final String value = source.replaceFirst("^data:image/[^;]*;base64,?", "");
                     byte[] bytes = Base64.getDecoder().decode(value.getBytes(StandardCharsets.UTF_8));
@@ -166,12 +166,12 @@ public class EmailNotifier extends AbstractConfigurableNotifier<EmailNotifierCon
                 mailAttachments.add(attachment);
             }
 
-            // Set HTML content
-            mailMessage.setHtml(document.html());
-
             // Attach images
             mailMessage.setInlineAttachment(mailAttachments);
         }
+
+        // Set HTML content
+        mailMessage.setHtml(document.html());
     }
 
     private String getContentTypeByFileName(final String fileName) {
