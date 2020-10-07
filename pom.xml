@@ -29,7 +29,7 @@
 
     <groupId>io.gravitee.notifier</groupId>
     <artifactId>gravitee-notifier-email</artifactId>
-    <version>1.2.7-SNAPSHOT</version>
+    <version>1.2.7</version>
 
     <name>Gravitee.io APIM - Notifier - Email</name>
 
