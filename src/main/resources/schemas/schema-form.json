@@ -1,5 +1,6 @@
 {
   "type" : "object",
+  "id" : "urn:jsonschema:io:gravitee:notifier:email:configuration:EmailNotifierConfiguration",
   "properties" : {
     "host" : {
       "title": "Host",
