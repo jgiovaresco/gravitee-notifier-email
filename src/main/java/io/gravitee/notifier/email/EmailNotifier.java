@@ -24,6 +24,7 @@ import io.gravitee.notifier.api.Notification;
 import io.gravitee.notifier.email.configuration.EmailNotifierConfiguration;
 import io.vertx.core.Vertx;
 import io.vertx.ext.mail.*;
+import io.vertx.ext.mail.impl.MailAttachmentImpl;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -145,7 +146,7 @@ public class EmailNotifier extends AbstractConfigurableNotifier<EmailNotifierCon
         if (!resources.isEmpty()) {
             final List<MailAttachment> mailAttachments = new ArrayList<>(resources.size());
             for (final Element res : resources) {
-                final MailAttachment attachment = new MailAttachment();
+                final MailAttachment attachment = new MailAttachmentImpl();
 
                 String source = res.attr("src").trim();
                 if (source.startsWith("data:image/")) {
