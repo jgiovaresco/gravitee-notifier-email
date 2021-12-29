@@ -15,13 +15,15 @@
     "username" : {
       "title": "Username",
       "description": "SMTP Username",
-      "type" : "string"
+      "type" : "string",
+      "sensitive" : true
     },
     "password" : {
       "title": "Password",
       "description": "SMTP Password",
       "type" : "string",
-      "widget": "password"
+      "widget": "password",
+      "sensitive" : true
     },
     "from" : {
       "title": "From",
@@ -74,7 +76,8 @@
     "sslKeyStorePassword" : {
       "title": "SSL key store password",
       "description": "Keystore password for SMTP exposition through SMTPS protocol",
-      "type" : "string"
+      "type" : "string",
+      "sensitive" : true
     }
   },
   "required": [
