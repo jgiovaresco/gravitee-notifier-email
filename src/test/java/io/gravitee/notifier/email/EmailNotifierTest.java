@@ -15,6 +15,13 @@
  */
 package io.gravitee.notifier.email;
 
+import static org.mockito.Matchers.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.mockito.MockitoAnnotations.initMocks;
+import static org.powermock.api.mockito.PowerMockito.mockStatic;
+import static org.springframework.test.util.ReflectionTestUtils.setField;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.gravitee.notifier.api.Notification;
 import io.gravitee.notifier.email.configuration.EmailNotifierConfiguration;
@@ -22,6 +29,9 @@ import io.vertx.core.Context;
 import io.vertx.core.Vertx;
 import io.vertx.ext.mail.MailClient;
 import io.vertx.ext.mail.MailMessage;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -32,31 +42,24 @@ import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.mockito.Matchers.*;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.mockito.MockitoAnnotations.initMocks;
-import static org.powermock.api.mockito.PowerMockito.mockStatic;
-import static org.springframework.test.util.ReflectionTestUtils.setField;
-
 @Ignore
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({MailClient.class, Vertx.class})
-@PowerMockIgnore({"com.sun.org.apache.xerces.*", "javax.xml.*", "org.xml.*"})
+@PrepareForTest({ MailClient.class, Vertx.class })
+@PowerMockIgnore({ "com.sun.org.apache.xerces.*", "javax.xml.*", "org.xml.*" })
 public class EmailNotifierTest {
 
     @Mock
     private ObjectMapper mapper;
+
     @Mock
     private Notification notification;
+
     @Mock
     private EmailNotifierConfiguration emailNotifierConfiguration;
+
     @Mock
     private MailClient mailClient;
+
     @Mock
     private Context context;
 
@@ -82,8 +85,7 @@ public class EmailNotifierTest {
     @Test
     public void shouldSend() throws Exception {
         when(notification.getType()).thenReturn("email");
-        when(mapper.readValue(nullable(String.class), eq(EmailNotifierConfiguration.class)))
-                .thenReturn(emailNotifierConfiguration);
+        when(mapper.readValue(nullable(String.class), eq(EmailNotifierConfiguration.class))).thenReturn(emailNotifierConfiguration);
         when(emailNotifierConfiguration.getFrom()).thenReturn("from@mail.com");
         when(emailNotifierConfiguration.getTo()).thenReturn("to@mail.com");
         when(emailNotifierConfiguration.getSubject()).thenReturn("subject of email");
@@ -100,14 +102,7 @@ public class EmailNotifierTest {
         mailMessage.setTo("to@mail.com");
         mailMessage.setSubject("subject of email");
         mailMessage.setHtml(
-                "<html>\n" +
-                " <head></head>\n" +
-                " <body>\n" +
-                "  <div>\n" +
-                "   test\n" +
-                "  </div>\n" +
-                " </body>\n" +
-                "</html>"
+            "<html>\n" + " <head></head>\n" + " <body>\n" + "  <div>\n" + "   test\n" + "  </div>\n" + " </body>\n" + "</html>"
         );
         verify(mailClient).sendMail(eq(mailMessage), any());
     }

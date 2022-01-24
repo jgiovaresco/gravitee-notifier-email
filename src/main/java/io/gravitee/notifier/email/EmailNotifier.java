@@ -15,6 +15,12 @@
  */
 package io.gravitee.notifier.email;
 
+import static io.vertx.core.buffer.Buffer.buffer;
+import static io.vertx.ext.mail.MailClient.createShared;
+import static java.lang.String.valueOf;
+import static java.nio.file.Files.readAllBytes;
+import static java.util.stream.Collectors.toList;
+
 import freemarker.cache.FileTemplateLoader;
 import freemarker.core.TemplateClassResolver;
 import freemarker.template.Configuration;
@@ -25,16 +31,6 @@ import io.gravitee.notifier.email.configuration.EmailNotifierConfiguration;
 import io.vertx.core.Vertx;
 import io.vertx.ext.mail.*;
 import io.vertx.ext.mail.impl.MailAttachmentImpl;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.annotation.Value;
-
-import javax.activation.MimetypesFileTypeMap;
 import java.io.File;
 import java.io.IOException;
 import java.net.URLDecoder;
@@ -43,12 +39,15 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static io.vertx.core.buffer.Buffer.buffer;
-import static io.vertx.ext.mail.MailClient.createShared;
-import static java.lang.String.valueOf;
-import static java.nio.file.Files.readAllBytes;
-import static java.util.stream.Collectors.toList;
+import javax.activation.MimetypesFileTypeMap;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Value;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
@@ -80,26 +79,35 @@ public class EmailNotifier extends AbstractConfigurableNotifier<EmailNotifierCon
         final CompletableFuture<Void> completeFuture = new CompletableFuture<>();
         try {
             final MailMessage mailMessage = new MailMessage()
-                    .setFrom(templatize(configuration.getFrom(), parameters))
-                    .setTo(Arrays.stream(configuration.getTo().split(",|;|\\s")).map(to -> {
-                        try {
-                            return templatize(to, parameters);
-                        } catch (Exception ex) {
-                            completeFuture.completeExceptionally(ex);
-                            throw new IllegalArgumentException("Error while sending email notification", ex);
-                        }
-                    }).collect(toList()));
+                .setFrom(templatize(configuration.getFrom(), parameters))
+                .setTo(
+                    Arrays
+                        .stream(configuration.getTo().split(",|;|\\s"))
+                        .map(to -> {
+                            try {
+                                return templatize(to, parameters);
+                            } catch (Exception ex) {
+                                completeFuture.completeExceptionally(ex);
+                                throw new IllegalArgumentException("Error while sending email notification", ex);
+                            }
+                        })
+                        .collect(toList())
+                );
 
             mailMessage.setSubject(templatize(configuration.getSubject(), parameters));
             addContentInMessage(mailMessage, templatize(configuration.getBody(), parameters));
 
             final MailConfig mailConfig = new MailConfig()
-                    .setHostname(configuration.getHost())
-                    .setPort(configuration.getPort())
-                    .setTrustAll(configuration.isSslTrustAll());
+                .setHostname(configuration.getHost())
+                .setPort(configuration.getPort())
+                .setTrustAll(configuration.isSslTrustAll());
 
-            if (configuration.getUsername() != null && ! configuration.getUsername().isEmpty() &&
-                    configuration.getPassword() != null && ! configuration.getPassword().isEmpty()) {
+            if (
+                configuration.getUsername() != null &&
+                !configuration.getUsername().isEmpty() &&
+                configuration.getPassword() != null &&
+                !configuration.getPassword().isEmpty()
+            ) {
                 mailConfig.setUsername(configuration.getUsername());
                 mailConfig.setPassword(configuration.getPassword());
             } else {
@@ -119,7 +127,9 @@ public class EmailNotifier extends AbstractConfigurableNotifier<EmailNotifierCon
             }
 
             createShared(Vertx.currentContext().owner(), mailConfig, valueOf(mailConfig.hashCode()))
-                    .sendMail(mailMessage, e -> {
+                .sendMail(
+                    mailMessage,
+                    e -> {
                         if (e.succeeded()) {
                             LOGGER.info("Email sent! " + e.result());
                             completeFuture.complete(null);
@@ -127,7 +137,8 @@ public class EmailNotifier extends AbstractConfigurableNotifier<EmailNotifierCon
                             LOGGER.error("Email failed!", e.cause());
                             completeFuture.completeExceptionally(e.cause());
                         }
-                    });
+                    }
+                );
         } catch (final Exception ex) {
             LOGGER.error("Error while sending email notification", ex);
             completeFuture.completeExceptionally(ex);
@@ -139,9 +150,10 @@ public class EmailNotifier extends AbstractConfigurableNotifier<EmailNotifierCon
         final Document document = Jsoup.parse(htmlText);
         final Elements imageElements = document.getElementsByTag("img");
 
-        final List<Element> resources = imageElements.stream()
-                .filter(imageElement -> imageElement.hasAttr("src") && !imageElement.attr("src").startsWith("http"))
-                .collect(toList());
+        final List<Element> resources = imageElements
+            .stream()
+            .filter(imageElement -> imageElement.hasAttr("src") && !imageElement.attr("src").startsWith("http"))
+            .collect(toList());
 
         if (!resources.isEmpty()) {
             final List<MailAttachment> mailAttachments = new ArrayList<>(resources.size());
@@ -192,8 +204,7 @@ public class EmailNotifier extends AbstractConfigurableNotifier<EmailNotifierCon
     private static String extractMimeType(final String encoded) {
         final Pattern mime = Pattern.compile("^data:([a-zA-Z0-9]+/[a-zA-Z0-9]+).*,.*");
         final Matcher matcher = mime.matcher(encoded);
-        if (!matcher.find())
-            return "";
+        if (!matcher.find()) return "";
         return matcher.group(1).toLowerCase();
     }
 }

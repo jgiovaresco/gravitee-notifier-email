@@ -16,7 +16,6 @@
 package io.gravitee.notifier.email.configuration;
 
 import io.gravitee.notifier.api.NotifierConfiguration;
-
 import java.io.Serializable;
 
 /**
