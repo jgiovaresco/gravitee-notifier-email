@@ -78,21 +78,23 @@ public class EmailNotifier extends AbstractConfigurableNotifier<EmailNotifierCon
     public CompletableFuture<Void> doSend(final Notification notification, final Map<String, Object> parameters) {
         final CompletableFuture<Void> completeFuture = new CompletableFuture<>();
         try {
+            String recipients = configuration.getTo();
+
+            try {
+                recipients = templatize(recipients, parameters);
+            } catch (Exception ex) {
+                completeFuture.completeExceptionally(ex);
+                throw new IllegalArgumentException("Invalid email recipient(s)", ex);
+            }
+
+            if (recipients == null || recipients.isEmpty()) {
+                completeFuture.completeExceptionally(new IllegalArgumentException("Invalid email recipient(s)"));
+                throw new IllegalArgumentException("Invalid email recipient(s)");
+            }
+
             final MailMessage mailMessage = new MailMessage()
                 .setFrom(templatize(configuration.getFrom(), parameters))
-                .setTo(
-                    Arrays
-                        .stream(configuration.getTo().split(",|;|\\s"))
-                        .map(to -> {
-                            try {
-                                return templatize(to, parameters);
-                            } catch (Exception ex) {
-                                completeFuture.completeExceptionally(ex);
-                                throw new IllegalArgumentException("Error while sending email notification", ex);
-                            }
-                        })
-                        .collect(toList())
-                );
+                .setTo(Arrays.stream(recipients.split(",|;|\\s")).collect(toList()));
 
             mailMessage.setSubject(templatize(configuration.getSubject(), parameters));
             addContentInMessage(mailMessage, templatize(configuration.getBody(), parameters));
