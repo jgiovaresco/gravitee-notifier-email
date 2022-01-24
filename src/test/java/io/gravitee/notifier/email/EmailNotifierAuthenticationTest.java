@@ -17,6 +17,7 @@ package io.gravitee.notifier.email;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.util.ReflectionTestUtils.setField;
 
 import com.icegreen.greenmail.configuration.GreenMailConfiguration;
 import com.icegreen.greenmail.junit5.GreenMailExtension;
@@ -36,6 +37,7 @@ import java.util.function.BiConsumer;
 import javax.mail.internet.MimeMessage;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -47,7 +49,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * @author GraviteeSource Team
  */
 @ExtendWith(MockitoExtension.class)
-public class EmailNotifierTest {
+public class EmailNotifierAuthenticationTest {
 
     private EmailNotifier emailNotifier;
 
@@ -61,19 +63,20 @@ public class EmailNotifierTest {
 
     @RegisterExtension
     static GreenMailExtension greenMail = new GreenMailExtension(ServerSetupTest.SMTP)
-        .withConfiguration(GreenMailConfiguration.aConfig().withDisabledAuthentication())
+        .withConfiguration(GreenMailConfiguration.aConfig().withUser("user", "password"))
         .withPerMethodLifecycle(true);
 
     @BeforeEach
     public void init() throws IOException {
         emailNotifier = new EmailNotifier(emailNotifierConfiguration);
-        emailNotifier.setTemplatesPath(this.getClass().getResource("/io/gravitee/notifier/email/templates").getPath());
+
         when(notification.getType()).thenReturn(EmailNotifier.TYPE);
+        setField(emailNotifier, "templatesPath", this.getClass().getResource("/io/gravitee/notifier/email/templates").getPath());
         emailNotifier.afterPropertiesSet();
     }
 
     @Test
-    public void shouldSendEmailToSingleRecipient() throws Exception {
+    public void shouldSendEmailWithCredentials() throws Exception {
         when(emailNotifierConfiguration.getFrom()).thenReturn("from@mail.com");
         when(emailNotifierConfiguration.getTo()).thenReturn("to@mail.com");
         when(emailNotifierConfiguration.getSubject()).thenReturn("subject of email");
@@ -132,15 +135,15 @@ public class EmailNotifierTest {
     }
 
     @Test
-    public void shouldSendEmailToMultipleRecipients() throws Exception {
+    public void shouldNotSendEmailWithInvalidCredentials() throws Exception {
         when(emailNotifierConfiguration.getFrom()).thenReturn("from@mail.com");
-        when(emailNotifierConfiguration.getTo()).thenReturn("to@mail.com,to2@mail.com");
+        when(emailNotifierConfiguration.getTo()).thenReturn("to@mail.com");
         when(emailNotifierConfiguration.getSubject()).thenReturn("subject of email");
         when(emailNotifierConfiguration.getBody()).thenReturn("template_sample.html");
         when(emailNotifierConfiguration.getHost()).thenReturn(ServerSetupTest.SMTP.getBindAddress());
         when(emailNotifierConfiguration.getPort()).thenReturn(ServerSetupTest.SMTP.getPort());
         when(emailNotifierConfiguration.getUsername()).thenReturn("user");
-        when(emailNotifierConfiguration.getPassword()).thenReturn("password");
+        when(emailNotifierConfiguration.getPassword()).thenReturn("bad-password");
 
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -156,31 +159,47 @@ public class EmailNotifierTest {
                             new BiConsumer<Void, Throwable>() {
                                 @Override
                                 public void accept(Void unused, Throwable throwable) {
-                                    assertNull(throwable);
+                                    assertNotNull(throwable);
+                                    assertEquals(0, greenMail.getReceivedMessages().length);
+                                    latch.countDown();
+                                }
+                            }
+                        );
+                    }
+                }
+            );
 
-                                    assertEquals(2, greenMail.getReceivedMessages().length);
-                                    MimeMessage receivedMessage = greenMail.getReceivedMessages()[1];
+        Assertions.assertTrue(latch.await(10, TimeUnit.SECONDS));
+    }
 
-                                    try {
-                                        assertEquals(
-                                            "<html>\r\n" +
-                                            " <head></head>\r\n" +
-                                            " <body>\r\n" +
-                                            "  template_sample.html\r\n" +
-                                            " </body>\r\n" +
-                                            "</html>",
-                                            GreenMailUtil.getBody(receivedMessage)
-                                        );
-                                        assertEquals(2, receivedMessage.getAllRecipients().length);
-                                        assertEquals("to@mail.com", receivedMessage.getAllRecipients()[0].toString());
-                                        assertEquals("to2@mail.com", receivedMessage.getAllRecipients()[1].toString());
-                                        //TODO: check why the sender is always null
-                                        //    assertEquals("from@mail.com", receivedMessage.getSender().toString());
-                                        assertEquals("subject of email", receivedMessage.getSubject());
-                                        latch.countDown();
-                                    } catch (Throwable t) {
-                                        fail(t);
-                                    }
+    @Test
+    @Disabled("GreenMail supports correctly authentication mechanism ?")
+    public void shouldNotSendEmailWithoutCredentials() throws Exception {
+        when(emailNotifierConfiguration.getFrom()).thenReturn("from@mail.com");
+        when(emailNotifierConfiguration.getTo()).thenReturn("to@mail.com");
+        when(emailNotifierConfiguration.getSubject()).thenReturn("subject of email");
+        when(emailNotifierConfiguration.getBody()).thenReturn("template_sample.html");
+        when(emailNotifierConfiguration.getHost()).thenReturn(ServerSetupTest.SMTP.getBindAddress());
+        when(emailNotifierConfiguration.getPort()).thenReturn(ServerSetupTest.SMTP.getPort());
+
+        CountDownLatch latch = new CountDownLatch(1);
+
+        Vertx
+            .vertx()
+            .runOnContext(
+                new Handler<Void>() {
+                    @Override
+                    public void handle(Void event) {
+                        CompletableFuture<Void> future = emailNotifier.send(notification, parameters);
+
+                        future.whenComplete(
+                            new BiConsumer<Void, Throwable>() {
+                                @Override
+                                public void accept(Void unused, Throwable throwable) {
+                                    // No exception when no credentials are passed to mail server
+                                    //    assertNotNull(throwable);
+                                    assertEquals(0, greenMail.getReceivedMessages().length);
+                                    latch.countDown();
                                 }
                             }
                         );

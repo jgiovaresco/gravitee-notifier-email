@@ -58,12 +58,14 @@ public class EmailNotifier extends AbstractConfigurableNotifier<EmailNotifierCon
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EmailNotifier.class);
 
-    private static final String TYPE = "email-notifier";
+    private static final String RECIPIENTS_SPLIT_REGEX = ",|;|\\s";
+
+    static final String TYPE = "email-notifier";
 
     @Value("${notifiers.email.templates.path:${gravitee.home}/templates}")
     private String templatesPath;
 
-    private Configuration config = new Configuration(Configuration.VERSION_2_3_28);
+    private final Configuration config = new Configuration(Configuration.VERSION_2_3_28);
 
     public EmailNotifier(EmailNotifierConfiguration configuration) {
         super(TYPE, configuration);
@@ -71,81 +73,90 @@ public class EmailNotifier extends AbstractConfigurableNotifier<EmailNotifierCon
 
     public void afterPropertiesSet() throws IOException {
         config.setNewBuiltinClassResolver(TemplateClassResolver.SAFER_RESOLVER);
-        config.setTemplateLoader(new FileTemplateLoader(new File(URLDecoder.decode(templatesPath, "UTF-8"))));
+        config.setTemplateLoader(new FileTemplateLoader(new File(URLDecoder.decode(templatesPath, StandardCharsets.UTF_8))));
     }
 
     @Override
     public CompletableFuture<Void> doSend(final Notification notification, final Map<String, Object> parameters) {
-        final CompletableFuture<Void> completeFuture = new CompletableFuture<>();
+        final CompletableFuture<Void> future = new CompletableFuture<>();
         try {
-            String recipients = configuration.getTo();
+            final MailMessage mailMessage = prepareMailMessage(parameters);
+            final MailConfig mailConfig = prepareMailConfig();
 
-            try {
-                recipients = templatize(recipients, parameters);
-            } catch (Exception ex) {
-                completeFuture.completeExceptionally(ex);
-                throw new IllegalArgumentException("Invalid email recipient(s)", ex);
-            }
-
-            if (recipients == null || recipients.isEmpty()) {
-                completeFuture.completeExceptionally(new IllegalArgumentException("Invalid email recipient(s)"));
-                throw new IllegalArgumentException("Invalid email recipient(s)");
-            }
-
-            final MailMessage mailMessage = new MailMessage()
-                .setFrom(templatize(configuration.getFrom(), parameters))
-                .setTo(Arrays.stream(recipients.split(",|;|\\s")).collect(toList()));
-
-            mailMessage.setSubject(templatize(configuration.getSubject(), parameters));
-            addContentInMessage(mailMessage, templatize(configuration.getBody(), parameters));
-
-            final MailConfig mailConfig = new MailConfig()
-                .setHostname(configuration.getHost())
-                .setPort(configuration.getPort())
-                .setTrustAll(configuration.isSslTrustAll());
-
-            if (
-                configuration.getUsername() != null &&
-                !configuration.getUsername().isEmpty() &&
-                configuration.getPassword() != null &&
-                !configuration.getPassword().isEmpty()
-            ) {
-                mailConfig.setUsername(configuration.getUsername());
-                mailConfig.setPassword(configuration.getPassword());
-            } else {
-                mailConfig.setLogin(LoginOption.DISABLED);
-            }
-
-            if (configuration.getSslKeyStore() != null) {
-                mailConfig.setKeyStore(configuration.getSslKeyStore());
-            }
-            if (configuration.getSslKeyStorePassword() != null) {
-                mailConfig.setKeyStorePassword(configuration.getSslKeyStorePassword());
-            }
-            if (configuration.isStartTLSEnabled()) {
-                mailConfig.setStarttls(StartTLSOptions.REQUIRED);
-            } else {
-                mailConfig.setStarttls(StartTLSOptions.DISABLED);
-            }
-
-            createShared(Vertx.currentContext().owner(), mailConfig, valueOf(mailConfig.hashCode()))
+            createShared(Vertx.currentContext().owner(), mailConfig, valueOf(mailConfig.getHostname().hashCode()))
                 .sendMail(
                     mailMessage,
                     e -> {
                         if (e.succeeded()) {
-                            LOGGER.info("Email sent! " + e.result());
-                            completeFuture.complete(null);
+                            LOGGER.debug("Email {) has been send successfully! " + e.result().getMessageID());
+                            future.complete(null);
                         } else {
-                            LOGGER.error("Email failed!", e.cause());
-                            completeFuture.completeExceptionally(e.cause());
+                            LOGGER.error("An error occurs while sending email", e.cause());
+                            future.completeExceptionally(e.cause());
                         }
                     }
                 );
         } catch (final Exception ex) {
             LOGGER.error("Error while sending email notification", ex);
-            completeFuture.completeExceptionally(ex);
+            future.completeExceptionally(ex);
         }
-        return completeFuture;
+        return future;
+    }
+
+    MailMessage prepareMailMessage(final Map<String, Object> parameters) throws Exception {
+        String recipients = configuration.getTo();
+
+        try {
+            recipients = templatize(recipients, parameters);
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Invalid email recipient(s)", ex);
+        }
+
+        if (recipients == null || recipients.isEmpty()) {
+            throw new IllegalArgumentException("Invalid email recipient(s)");
+        }
+
+        final MailMessage mailMessage = new MailMessage()
+            .setFrom(templatize(configuration.getFrom(), parameters))
+            .setTo(Arrays.stream(recipients.split(RECIPIENTS_SPLIT_REGEX)).collect(toList()));
+
+        mailMessage.setSubject(templatize(configuration.getSubject(), parameters));
+        addContentInMessage(mailMessage, templatize(configuration.getBody(), parameters));
+
+        return mailMessage;
+    }
+
+    MailConfig prepareMailConfig() {
+        final MailConfig mailConfig = new MailConfig()
+            .setHostname(configuration.getHost())
+            .setPort(configuration.getPort())
+            .setTrustAll(configuration.isSslTrustAll());
+
+        if (
+            configuration.getUsername() != null &&
+            !configuration.getUsername().isEmpty() &&
+            configuration.getPassword() != null &&
+            !configuration.getPassword().isEmpty()
+        ) {
+            mailConfig.setUsername(configuration.getUsername());
+            mailConfig.setPassword(configuration.getPassword());
+        } else {
+            mailConfig.setLogin(LoginOption.DISABLED);
+        }
+
+        if (configuration.getSslKeyStore() != null) {
+            mailConfig.setKeyStore(configuration.getSslKeyStore());
+        }
+        if (configuration.getSslKeyStorePassword() != null) {
+            mailConfig.setKeyStorePassword(configuration.getSslKeyStorePassword());
+        }
+        if (configuration.isStartTLSEnabled()) {
+            mailConfig.setStarttls(StartTLSOptions.REQUIRED);
+        } else {
+            mailConfig.setStarttls(StartTLSOptions.DISABLED);
+        }
+
+        return mailConfig;
     }
 
     private void addContentInMessage(final MailMessage mailMessage, final String htmlText) throws Exception {
@@ -208,5 +219,13 @@ public class EmailNotifier extends AbstractConfigurableNotifier<EmailNotifierCon
         final Matcher matcher = mime.matcher(encoded);
         if (!matcher.find()) return "";
         return matcher.group(1).toLowerCase();
+    }
+
+    public String getTemplatesPath() {
+        return templatesPath;
+    }
+
+    public void setTemplatesPath(String templatesPath) {
+        this.templatesPath = templatesPath;
     }
 }
