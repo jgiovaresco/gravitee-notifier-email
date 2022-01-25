@@ -1,3 +1,10 @@
+## [1.3.2](https://github.com/gravitee-io/gravitee-notifier-email/compare/1.3.1...1.3.2) (2022-01-25)
+
+
+### Bug Fixes
+
+* **email:** Split the recipients once the parameter has been processed by Freemarker ([dd4126e](https://github.com/gravitee-io/gravitee-notifier-email/commit/dd4126e0327dc0cd06880d55ce5bc579301ca74e)), closes [gravitee-io/issues#6992](https://github.com/gravitee-io/issues/issues/6992)
+
 ## [1.3.1](https://github.com/gravitee-io/gravitee-notifier-email/compare/1.3.0...1.3.1) (2022-01-24)
 
 
