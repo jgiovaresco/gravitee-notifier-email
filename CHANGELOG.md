@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/gravitee-io/gravitee-notifier-email/compare/1.3.2...1.4.0) (2022-01-27)
+
+
+### Features
+
+* **mail:** support multi recipients and add unit tests ([b88b848](https://github.com/gravitee-io/gravitee-notifier-email/commit/b88b8487f9992fabc6c465f959de4db1a3174e4e)), closes [gravitee-io/issues#6992](https://github.com/gravitee-io/issues/issues/6992)
+
 ## [1.3.2](https://github.com/gravitee-io/gravitee-notifier-email/compare/1.3.1...1.3.2) (2022-01-25)
 
 
