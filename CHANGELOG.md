@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/gravitee-io/gravitee-notifier-email/compare/1.4.0...1.4.1) (2022-02-23)
+
+
+### Bug Fixes
+
+* **config:** remove sensitive flag to the username ([28a852e](https://github.com/gravitee-io/gravitee-notifier-email/commit/28a852eeeb8ac920085e0ae8bdfb34ab32aebf73)), closes [gravitee-io/issues#7166](https://github.com/gravitee-io/issues/issues/7166)
+
 # [1.4.0](https://github.com/gravitee-io/gravitee-notifier-email/compare/1.3.2...1.4.0) (2022-01-27)
 
 
